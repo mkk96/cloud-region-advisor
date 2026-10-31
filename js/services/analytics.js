@@ -47,7 +47,9 @@ function rpc(name, body, { config = ANALYTICS, fetchFn = globalThis.fetch } = {}
   const headers = { "Content-Type": "application/json", apikey: config.supabaseKey };
   // Legacy anon keys are JWTs and go in Authorization too; new sb_publishable_ keys must not.
   if (!config.supabaseKey.startsWith("sb_")) headers.Authorization = `Bearer ${config.supabaseKey}`;
-  return fetchFn(`${config.supabaseUrl.replace(/\/$/, "")}/rest/v1/rpc/${name}`, {
+  // Accept the project URL with or without a trailing "/rest/v1/".
+  const base = config.supabaseUrl.replace(/\/+$/, "").replace(/\/rest\/v1$/, "");
+  return fetchFn(`${base}/rest/v1/rpc/${name}`, {
     method: "POST",
     headers,
     body: JSON.stringify(body || {}),

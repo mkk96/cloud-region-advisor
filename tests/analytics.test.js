@@ -53,6 +53,12 @@ test("logs once per browser session, sending only a visitor id", async () => {
   ok(/^[0-9a-f-]{36}$/.test(call.body.p_visitor), "uuid");
 });
 
+test("project URL works with or without /rest/v1/", async () => {
+  const d = deps({ config: { ...CONFIG, supabaseUrl: "https://demo.supabase.co/rest/v1/" } });
+  await logVisit(d);
+  eq(d.fetchFn.calls[0].url, "https://demo.supabase.co/rest/v1/rpc/log_visit");
+});
+
 test("the same browser keeps the same anonymous id", () => {
   const s = memoryStorage();
   eq(visitorId(s), visitorId(s));

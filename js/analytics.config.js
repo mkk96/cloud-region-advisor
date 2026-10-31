@@ -7,6 +7,6 @@
  * supabase/setup.sql.
  */
 export const ANALYTICS = {
-  supabaseUrl: "", // e.g. "https://abcdefghijklmnop.supabase.co"
-  supabaseKey: "", // the project's publishable ("anon") key
+  supabaseUrl: "https://ajzrkcznhlcemaboonqy.supabase.co",
+  supabaseKey: "sb_publishable_8ZUje25gb5SmIiX7rdnmkQ_xCG-lDnU",
 };
