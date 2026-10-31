@@ -2,6 +2,7 @@
 
 import { $, $$, esc } from "./dom.js";
 import { latencyClass } from "./format.js";
+import { paginate, pageList } from "./pagination.js";
 import { state, actions, currentCloud, cloudState } from "../state/store.js";
 
 const SWATCH = { good: "var(--good)", mid: "var(--mid)", bad: "var(--bad)", none: "var(--none)" };
@@ -49,6 +50,36 @@ export function initRegionTable() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
   $("#showExcluded").addEventListener("change", (e) => actions.setShowExcluded(e.target.checked));
+  $("#regionPager").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-page]");
+    if (!b || b.disabled) return;
+    actions.setTablePage(+b.dataset.page);
+    // Keep the table header in view when the new page is shorter/longer.
+    const card = $("#regionTable").closest(".card");
+    if (card.getBoundingClientRect().top < 0) card.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}
+
+function renderPager({ page, pages, from, to, total }) {
+  const pager = $("#regionPager");
+  if (total <= 0) {
+    pager.innerHTML = "";
+    return;
+  }
+  const btn = (p, label, { disabled = false, current = false, aria = "" } = {}) =>
+    `<button type="button" class="page-btn${current ? " current" : ""}" data-page="${p}"
+       ${disabled ? "disabled" : ""} ${current ? 'aria-current="page"' : ""} ${aria ? `aria-label="${aria}"` : ""}>${label}</button>`;
+  pager.innerHTML = `
+    <span class="pager-info">Showing <b>${from}–${to}</b> of <b>${total}</b> regions</span>
+    ${pages > 1
+      ? `<span class="pager-buttons">
+          ${btn(page - 1, "‹ Prev", { disabled: page === 1, aria: "Previous page" })}
+          ${pageList(page, pages)
+            .map((p) => (p === "…" ? `<span class="page-gap">…</span>` : btn(p, p, { current: p === page, aria: `Page ${p}` })))
+            .join("")}
+          ${btn(page + 1, "Next ›", { disabled: page === pages, aria: "Next page" })}
+        </span>`
+      : ""}`;
 }
 
 export function renderRegionTable(result) {
@@ -75,7 +106,11 @@ export function renderRegionTable(result) {
   const primaryId = result.primary && result.primary.region.id;
   const drId = result.dr && !result.dr.none ? result.dr.row.region.id : null;
 
-  $("#regionTable tbody").innerHTML = rows
+  const pageInfo = paginate(rows, state.tablePage);
+  state.tablePage = pageInfo.page; // clamp if fewer rows now
+  renderPager(pageInfo);
+
+  $("#regionTable tbody").innerHTML = pageInfo.items
     .map((row) => {
       const r = row.region;
       const excluded = row.excluded.length > 0;

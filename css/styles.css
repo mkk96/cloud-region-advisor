@@ -287,6 +287,25 @@ tr.is-dr td { background: color-mix(in srgb, var(--dr) 14%, var(--surface)); }
 .svc-count.full { color: var(--good); border-bottom-color: var(--good); }
 td.why { min-width: 180px; }
 
+.pager {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  margin-top: 12px; font-size: 13px;
+}
+.pager:empty { display: none; }
+.pager-info { color: var(--muted); }
+.pager-info b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.pager-buttons { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.page-btn {
+  min-width: 34px; padding: 5px 10px; border: 1px solid var(--border); border-radius: 7px;
+  background: var(--surface); color: var(--text); font: inherit; cursor: pointer; font-variant-numeric: tabular-nums;
+}
+.page-btn:hover:not(:disabled) { background: var(--surface-2); }
+.page-btn:disabled { opacity: 0.45; cursor: default; }
+.page-btn.current { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+:root[data-theme="dark"] .page-btn.current { color: #0f141a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .page-btn.current { color: #0f141a; } }
+.page-gap { padding: 0 4px; color: var(--muted); }
+
 /* Export */
 .tabs { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
 .tab { border: 0; background: var(--surface); color: var(--muted); padding: 6px 14px; font: inherit; cursor: pointer; }

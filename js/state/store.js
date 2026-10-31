@@ -22,6 +22,7 @@ export const state = {
   downtime: "minutes",
   sort: { key: "rank", dir: 1 },
   showExcluded: true,
+  tablePage: 1,
   testing: false,
   // Per cloud: { measured, measuredShared, testSummary, services, primaryOverride, tab }
   perCloud: {},
@@ -50,6 +51,9 @@ export function subscribe(fn) {
   return () => listeners.delete(fn);
 }
 function emit(topic) {
+  // Anything that can reorder the region table sends it back to page 1.
+  // Live test results ("test") and pure view changes ("view") keep the page.
+  if (topic !== "test" && topic !== "view") state.tablePage = 1;
   listeners.forEach((fn) => fn(topic));
 }
 
@@ -131,10 +135,16 @@ export const actions = {
   setSort(key) {
     const highFirst = ["cfe", "zones", "services"].includes(key);
     state.sort = { key, dir: state.sort.key === key ? -state.sort.dir : highFirst ? -1 : 1 };
+    state.tablePage = 1;
     emit("view");
   },
   setShowExcluded(on) {
     state.showExcluded = on;
+    state.tablePage = 1;
+    emit("view");
+  },
+  setTablePage(page) {
+    state.tablePage = page;
     emit("view");
   },
   setExportTab(id) {
@@ -144,6 +154,7 @@ export const actions = {
 
   startTest() {
     state.testing = true;
+    state.tablePage = 1;
     Object.assign(cloudState(), { measured: {}, measuredShared: false, testSummary: "" });
     emit("test");
   },

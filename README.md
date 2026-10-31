@@ -73,8 +73,9 @@ The recommendation updates instantly as you change anything.
   primary ↔ DR latency, and the rules it passed.
 - **Latency map**: every region coloured 🟢 < 80 ms · 🟠 80–160 ms · 🔴 > 160 ms. Grey means
   excluded or not measured.
-- **All regions table**: sort by latency, price, carbon, zones or services. Hover the *Services*
-  count to see what a region lacks. Click **Set primary** to override the pick and see the matching DR.
+- **All regions table**: shows 10 regions per page; use the page buttons below it to see the rest.
+  Sort by latency, price, carbon, zones or services. Hover the *Services* count to see what a region
+  lacks. Click **Set primary** to override the pick and see the matching DR.
 
 ### 6. Use or share the result
 - **Export**: copy a ready-made CLI or Terraform snippet with the chosen regions filled in

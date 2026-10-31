@@ -2,6 +2,7 @@
 
 import "./recommend.test.js";
 import "./analytics.test.js";
+import "./pagination.test.js";
 import { report } from "./runner.js";
 
 report();
