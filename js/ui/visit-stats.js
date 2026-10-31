@@ -1,6 +1,7 @@
 /** Footer visitor statistics (hidden until analytics is configured and responds). */
 
 import { $ } from "./dom.js";
+import { countUpAll } from "./animate.js";
 
 const PERIODS = [
   ["today", "Today"],
@@ -28,10 +29,11 @@ export function renderVisitStats(stats) {
         ([key, label]) => `
         <div class="visit-tile">
           <span class="visit-label">${label}</span>
-          <b>${fmt(stats[key] && stats[key].visitors)}</b><small>unique visitors</small>
+          <b data-count="${Number((stats[key] && stats[key].visitors) || 0)}">0</b><small>unique visitors</small>
           <span class="visit-sub">${fmt(stats[key] && stats[key].visits)} visits</span>
         </div>`
       ).join("")}
     </div>`;
   el.hidden = false;
+  countUpAll(el);
 }

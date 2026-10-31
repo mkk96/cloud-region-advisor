@@ -19,6 +19,9 @@ import { initRegionTable, renderRegionTable } from "./ui/region-table.js";
 import { initExport, renderExportTabs, renderSnippet } from "./ui/export.js";
 import { renderFootnote } from "./ui/footnote.js";
 import { renderVisitStats } from "./ui/visit-stats.js";
+import { initTheme } from "./ui/theme.js";
+import { initHero, renderHeroCta } from "./ui/hero.js";
+import { renderSteps } from "./ui/steps.js";
 import { logVisit, fetchStats } from "./services/analytics.js";
 
 function renderResults() {
@@ -53,31 +56,40 @@ function render(topics) {
   if (cloudChanged || topics.has("test")) {
     renderCloudSwitch();
     renderLatencyTest();
+    renderHeroCta(state.testing);
   }
   if (cloudChanged || topics.has("view")) renderExportTabs();
   if (all || topics.has("locations")) renderLocations();
   if (topics.has("services")) renderServiceSelection();
+  renderSteps();
   renderResults();
 }
 
 const pending = new Set();
 let scheduled = false;
+// While a latency test streams results, redraw ~2×/s instead of every frame
+// so rendering doesn't compete with the measurements.
+const TEST_RENDER_INTERVAL_MS = 500;
 function schedule(topic) {
   pending.add(topic);
   if (scheduled) return;
   scheduled = true;
-  requestAnimationFrame(() => {
+  const run = () => {
     scheduled = false;
     const topics = new Set(pending);
     pending.clear();
     render(topics);
-  });
+  };
+  if (state.testing && topic === "test") setTimeout(() => requestAnimationFrame(run), TEST_RENDER_INTERVAL_MS);
+  else requestAnimationFrame(run);
 }
 
 // ---------- boot ----------
 const shared = readHash();
 if (shared) actions.hydrate(shared);
 
+initTheme(() => schedule("view")); // redraw map tiles/colours for the new theme
+initHero();
 initCloudSwitch();
 initLocations();
 initLatencyTest();

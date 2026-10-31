@@ -3,6 +3,7 @@
 import { $, $$, esc } from "./dom.js";
 import { latencyClass } from "./format.js";
 import { paginate, pageList } from "./pagination.js";
+import { highlightRegion, focusRegion } from "./map.js";
 import { state, actions, currentCloud, cloudState } from "../state/store.js";
 
 const SWATCH = { good: "var(--good)", mid: "var(--mid)", bad: "var(--bad)", none: "var(--none)" };
@@ -21,7 +22,7 @@ function sortValue(row, key) {
   return 0;
 }
 
-function latencyCell(row, measured, excluded) {
+function latencyCell(row, measured, excluded, maxMs) {
   const m = measured[row.region.id];
   if (row.latency) {
     const badge =
@@ -30,7 +31,9 @@ function latencyCell(row, measured, excluded) {
       : "";
     const jit = m && m.ok && m.noisy ? `<span class="badge warn" title="Jitter ${m.jitter} ms">jitter</span>` : "";
     const swatch = SWATCH[excluded ? "none" : latencyClass(row.latency.ms)];
-    return `<span class="lat">${badge}${jit}<i class="swatch" style="background:${swatch}"></i>${row.latency.ms} ms</span>`;
+    const width = Math.max(4, Math.min(100, (row.latency.ms / maxMs) * 100));
+    return `<span class="lat">${badge}${jit}<i class="swatch" style="background:${swatch}"></i>${row.latency.ms} ms</span>` +
+      `<span class="latbar"><i style="width:${width.toFixed(0)}%;background:${swatch}"></i></span>`;
   }
   return m && !m.ok ? `<span class="badge" title="Probe ${m.error}">${m.error}</span>` : "—";
 }
@@ -43,12 +46,23 @@ function servicesCell(region, cloud) {
 
 export function initRegionTable() {
   $$("#regionTable th[data-sort]").forEach((th) => th.addEventListener("click", () => actions.setSort(th.dataset.sort)));
-  $("#regionTable tbody").addEventListener("click", (e) => {
+  const tbody = $("#regionTable tbody");
+  tbody.addEventListener("click", (e) => {
     const b = e.target.closest("[data-primary]");
-    if (!b) return;
-    actions.setPrimary(b.dataset.primary);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (b) {
+      actions.setPrimary(b.dataset.primary);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    const name = e.target.closest(".rid");
+    if (name) focusRegion(name.closest("tr").dataset.id);
   });
+  // Hovering a row highlights its marker on the map.
+  tbody.addEventListener("mouseover", (e) => {
+    const tr = e.target.closest("tr[data-id]");
+    if (tr) highlightRegion(tr.dataset.id);
+  });
+  tbody.addEventListener("mouseleave", () => highlightRegion(null));
   $("#showExcluded").addEventListener("change", (e) => actions.setShowExcluded(e.target.checked));
   $("#regionPager").addEventListener("click", (e) => {
     const b = e.target.closest("[data-page]");
@@ -109,6 +123,8 @@ export function renderRegionTable(result) {
   const pageInfo = paginate(rows, state.tablePage);
   state.tablePage = pageInfo.page; // clamp if fewer rows now
   renderPager(pageInfo);
+  // Latency bars are scaled against the slowest region in the whole table.
+  const maxMs = Math.max(100, ...rows.filter((r) => r.latency).map((r) => r.latency.ms));
 
   $("#regionTable tbody").innerHTML = pageInfo.items
     .map((row) => {
@@ -119,10 +135,11 @@ export function renderRegionTable(result) {
         !excluded && r.id !== primaryId
           ? `<button class="btn small" data-primary="${r.id}" title="Use ${r.id} as primary">Set primary</button>`
           : "";
-      return `<tr class="${cls}">
-        <td class="num-col">${excluded ? "" : row.rank ?? ""}</td>
-        <td><span class="rid">${r.id}</span><span class="sub">${esc(r.city)}, ${esc(r.country)}</span></td>
-        <td class="num-col">${latencyCell(row, measured, excluded)}</td>
+      const rank = excluded || row.rank == null ? "" : `<span class="rank${row.rank <= 3 ? ` r${row.rank}` : ""}">${row.rank}</span>`;
+      return `<tr class="${cls}" data-id="${r.id}">
+        <td class="num-col">${rank}</td>
+        <td><span class="rid" title="Show ${r.id} on the map">${r.id}</span><span class="sub">${esc(r.city)}, ${esc(r.country)}</span></td>
+        <td class="num-col">${latencyCell(row, measured, excluded, maxMs)}</td>
         <td class="num-col">${r.price.toFixed(2)}</td>
         <td class="num-col">${r.cfe}%</td>
         <td class="num-col">${r.zones.length || "—"}</td>

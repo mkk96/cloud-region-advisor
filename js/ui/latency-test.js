@@ -38,6 +38,8 @@ export function renderLatencyTest() {
 
   $("#sharedBanner").hidden = !cs.measuredShared;
   btn.disabled = state.testing;
+  // Lets CSS pause decorative animations so they don't compete with the probes.
+  document.body.classList.toggle("is-testing", state.testing);
 
   if (state.testing) {
     btn.textContent = "Testing…";

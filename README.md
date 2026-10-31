@@ -74,8 +74,11 @@ The recommendation updates instantly as you change anything.
 - **Latency map**: every region coloured 🟢 < 80 ms · 🟠 80–160 ms · 🔴 > 160 ms. Grey means
   excluded or not measured.
 - **All regions table**: shows 10 regions per page; use the page buttons below it to see the rest.
-  Sort by latency, price, carbon, zones or services. Hover the *Services* count to see what a region
+  Sort by latency, price, carbon, zones or services. Hover a row to highlight that region on the
+  map, or click its name to fly the map to it. Hover the *Services* count to see what a region
   lacks. Click **Set primary** to override the pick and see the matching DR.
+
+Use the ☀ / ☾ button in the top bar to switch between light and dark mode.
 
 ### 6. Use or share the result
 - **Export**: copy a ready-made CLI or Terraform snippet with the chosen regions filled in

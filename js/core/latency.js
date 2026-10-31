@@ -9,16 +9,24 @@ const WARMUP_TIMEOUT_MS = 12000;
 const CONCURRENCY = 4;
 const MAX_SAMPLE_FAILURES = 2;
 
+let probeSeq = 0;
+
+// Each probe gets a unique query string so its Resource Timing entry can be
+// found. The browser's own network timing is used when available: unlike a
+// performance.now() stopwatch, it isn't inflated when the page is busy.
 // `no-cors` gives an opaque response for hosts without CORS headers; the
 // body is unreadable but the round-trip time is still real.
 async function timedFetch(url, mode, timeout = TIMEOUT_MS) {
+  const probeUrl = `${url}${url.includes("?") ? "&" : "?"}cra=${Date.now().toString(36)}${(probeSeq++).toString(36)}`;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeout);
   const t0 = performance.now();
   try {
-    const res = await fetch(url, { mode, cache: "no-store", signal: ctrl.signal });
+    const res = await fetch(probeUrl, { mode, cache: "no-store", signal: ctrl.signal });
     await res.text();
-    return performance.now() - t0;
+    const elapsed = performance.now() - t0;
+    const entry = performance.getEntriesByName(new URL(probeUrl).href).pop();
+    return entry && entry.duration > 0 ? entry.duration : elapsed;
   } finally {
     clearTimeout(timer);
   }
@@ -65,6 +73,9 @@ async function probeRegion(region, mode) {
  * region completes. Resolves to { [regionId]: result }.
  */
 export async function runLatencyTest(regions, { mode = "cors", onResult } = {}) {
+  // Room for every probe's timing entry (default buffer is 250).
+  performance.clearResourceTimings();
+  performance.setResourceTimingBufferSize(Math.max(500, regions.length * (SAMPLES + 2)));
   const queue = [...regions];
   const results = {};
   let done = 0;

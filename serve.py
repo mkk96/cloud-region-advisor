@@ -3,9 +3,11 @@
 Like `python -m http.server`, but always sends JavaScript as
 text/javascript. Some Windows machines map .js to text/plain in the
 registry, and browsers refuse to run ES modules served that way.
+
+Uses a threaded server: browsers open spare connections in advance, and a
+single-threaded server can block on an idle one while module files queue.
 """
 import http.server
-import socketserver
 import sys
 import os
 
@@ -25,6 +27,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
-with socketserver.TCPServer(("127.0.0.1", PORT), Handler) as httpd:
+with http.server.ThreadingHTTPServer(("127.0.0.1", PORT), Handler) as httpd:
     print(f"Cloud Region Advisor running at http://localhost:{PORT}  (Ctrl+C to stop)")
     httpd.serve_forever()
