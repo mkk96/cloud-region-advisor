@@ -4,7 +4,7 @@
  * with each factor min-max normalised to 0–1 across eligible regions.
  */
 
-import { distanceKm, estimateRtt } from "./geo.js";
+import { distanceKm, estimateRtt, locationKey } from "./geo.js";
 
 function normalizedShares(locations) {
   const total = locations.reduce((s, l) => s + (Number(l.share) || 0), 0);
@@ -12,32 +12,47 @@ function normalizedShares(locations) {
 }
 
 /**
+ * Measured results that apply to one user location: those of a remote probe
+ * near it, else this device's own when the location is marked "I'm here".
+ * Returns { [regionId]: result } or null when nothing applies.
+ */
+export function resultsFor(loc, { measured = {}, remote = {} }) {
+  const r = remote[locationKey(loc)];
+  if (r && Object.keys(r.results).length) return r.results;
+  if (loc.here && Object.keys(measured).length) return measured;
+  return null;
+}
+
+/**
  * Traffic-weighted latency from the user's locations to a region.
  * Returns { ms, source: "measured" | "estimated" | "mixed" } or null.
  */
-export function regionLatency(region, { locations, measured }) {
-  const m = measured[region.id];
+export function regionLatency(region, ctx) {
+  const { locations, measured = {} } = ctx;
   if (!locations.length) {
+    const m = measured[region.id];
     return m && m.ok ? { ms: m.median, source: "measured" } : null;
   }
-  // Once a live test has run, a region whose probe failed is unreachable
-  // from "here" — don't paper over it with an optimistic distance estimate.
-  const tested = Object.values(measured).some((x) => x.ok);
-  if (tested && !(m && m.ok) && locations.some((l) => l.here)) return null;
 
   const shares = normalizedShares(locations);
   let ms = 0;
   let measuredCount = 0;
-  locations.forEach((loc, i) => {
+  for (let i = 0; i < locations.length; i++) {
+    const results = resultsFor(locations[i], ctx);
+    const m = results && results[region.id];
     let value;
-    if (loc.here && m && m.ok) {
+    if (m && m.ok) {
       value = m.median;
       measuredCount++;
+    } else if (m) {
+      // The probe failed: the region is unreachable from there — don't
+      // paper over it with an optimistic distance estimate.
+      return null;
     } else {
-      value = estimateRtt(distanceKm(loc, region));
+      value = estimateRtt(distanceKm(locations[i], region));
     }
     ms += value * shares[i];
-  });
+  }
   const source = measuredCount === locations.length ? "measured" : measuredCount ? "mixed" : "estimated";
   return { ms: Math.round(ms), source };
 }

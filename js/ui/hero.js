@@ -1,6 +1,6 @@
 /** Hero banner: headline stats and the "Run latency test" call to action. */
 
-import { $ } from "./dom.js";
+import { $, toast } from "./dom.js";
 import { countUpAll } from "./animate.js";
 import { CLOUD_LIST } from "../clouds/index.js";
 
@@ -19,6 +19,11 @@ export function initHero() {
 
   // Start the test and bring the map into view so results can be watched live.
   $("#heroCta").addEventListener("click", () => {
+    if ($("#testBtn").disabled) {
+      toast("Add a user location first");
+      $("#cityInput").focus();
+      return;
+    }
     $("#testBtn").click();
     $("#map").closest(".card").scrollIntoView({ behavior: "smooth", block: "center" });
   });

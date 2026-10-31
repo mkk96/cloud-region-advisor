@@ -21,7 +21,8 @@ export function serviceAvailable(service, region) {
 /**
  * def.regions rows: [id, city, cc, country, continent, lat, lon, zones, price, cfe, extra]
  *   zones: comma-separated zone suffixes ("" for none); def.zoneName(id, z) names them
- *   extra: optional { host, pair } — probe host, official DR pair
+ *   extra: optional { host, pair, rep } — probe host, official DR pair, rep: false
+ *          when a GCP region has no Cloud Storage regional endpoint
  */
 export function defineCloud(def) {
   const regions = def.regions.map(([id, city, cc, country, continent, lat, lon, zones, price, cfe, extra = {}]) => {
@@ -32,6 +33,7 @@ export function defineCloud(def) {
       pair: extra.pair || null,
     };
     region.probeUrl = def.probe.url(region, extra);
+    region.remoteProbe = def.probe.remote(region, extra);
     region.services = Object.fromEntries(def.services.map((s) => [s.id, serviceAvailable(s, region)]));
     region.serviceCount = Object.values(region.services).filter(Boolean).length;
     return region;

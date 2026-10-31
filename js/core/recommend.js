@@ -2,12 +2,14 @@
  * Recommendation pipeline (see PRD "Recommendation logic"): filter, score,
  * pick primary, pick DR, explain. Pure — no DOM, no globals.
  *
- * ctx = { cloud, locations, measured, residency, services, weights,
+ * ctx = { cloud, locations, measured, remote, residency, services, weights,
  *         downtime, primaryOverride }
+ *   measured: this device's results { regionId: result }
+ *   remote:   per location { [locationKey]: { probe, results } }
  */
 
 import { exclusionReasons } from "./filters.js";
-import { regionLatency, normalizeWeights, scoreRows } from "./scoring.js";
+import { regionLatency, resultsFor, normalizeWeights, scoreRows } from "./scoring.js";
 import { pickDR } from "./dr.js";
 import { primaryReason, rowReason } from "./explain.js";
 
@@ -49,9 +51,10 @@ export function recommend(ctx) {
   result.dr = pickDR(result.primary, eligible, ctx);
 
   rows.forEach((r) => (r.reason = rowReason(r, result, byLat[0].latency.ms)));
-  if (ctx.locations.length > 1 && ctx.locations.some((l) => !l.here)) {
+  const unmeasured = ctx.locations.filter((l) => !resultsFor(l, ctx));
+  if (unmeasured.length && unmeasured.length < ctx.locations.length) {
     result.warnings.push(
-      "Latency for locations other than yours is estimated from distance (the browser can only measure from your own network)."
+      `Latency from ${unmeasured.map((l) => l.name).join("; ")} is estimated from distance. Run the latency test from your user locations to measure it.`
     );
   }
   return result;

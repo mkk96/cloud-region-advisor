@@ -75,6 +75,7 @@ export default defineCloud({
   probe: {
     mode: "cors",
     url: (r) => `https://dynamodb.${r.id}.amazonaws.com/ping`,
+    remote: (r) => ({ host: `dynamodb.${r.id}.amazonaws.com`, path: "/ping", metric: "tcp" }),
     describe: `the public DynamoDB health endpoint in each region (<code>dynamodb.&lt;region&gt;.amazonaws.com/ping</code>)`,
   },
   dr: {

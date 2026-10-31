@@ -15,12 +15,17 @@ export function renderWarnings(result) {
     );
   }
   const p = result.primary;
-  if (p && p.latency && p.latency.source !== "measured" && !state.locations.some((l) => l.here)) {
-    list.push("No location is marked “I'm here”, so latency is estimated from distance only. Tick “I'm here” and run the test for measured numbers.");
+  if (p && p.latency && p.latency.source === "estimated") {
+    list.push(
+      state.testMode === "device" && !state.locations.some((l) => l.here)
+        ? "No location is marked “I'm here”, so latency is estimated from distance only. Tick “I'm here” and run the test for measured numbers."
+        : "Latency is estimated from distance until you run the latency test."
+    );
   }
   $("#warnings").innerHTML = list.map((w) => `<div class="warning">${esc(w)}</div>`).join("");
 
   const msg = $("#message");
-  msg.hidden = !(result.message && !p && Object.keys(measured).length);
+  const cs = cloudState();
+  msg.hidden = !(result.message && !p && (Object.keys(measured).length || Object.keys(cs.remote).length));
   msg.textContent = result.message || "";
 }

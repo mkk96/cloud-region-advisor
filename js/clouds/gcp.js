@@ -88,6 +88,14 @@ export default defineCloud({
   probe: {
     mode: "cors",
     url: (r, x) => `https://${x.host}.a.run.app/api/ping`,
+    // Remote probes open a fresh connection per request, which GCPing's
+    // run.app URLs (served via Google's nearest edge) inflate. Cloud Storage
+    // regional endpoints terminate in-region, so their TCP handshake is the
+    // true round trip; regions without one fall back to GCPing.
+    remote: (r, x) =>
+      x.rep === false
+        ? { host: `${x.host}.a.run.app`, path: "/api/ping", metric: "firstByte" }
+        : { host: `storage.${r.id}.rep.googleapis.com`, path: "/", metric: "tcp" },
     describe: `a tiny Cloud Run endpoint in each region (the open-source <a href="https://gcping.com" target="_blank" rel="noopener">GCPing</a> probes)`,
   },
   dr: {
@@ -240,7 +248,7 @@ export default defineCloud({
     ["asia-south2", "Delhi", "IN", "India", "AS", 28.61, 77.21, "a,b,c", 1.2, 22, { host: "asia-south2-5tkroniexa-em" }],
     ["asia-southeast1", "Jurong West", "SG", "Singapore", "AS", 1.34, 103.71, "a,b,c", 1.23, 4, { host: "asia-southeast1-5tkroniexa-as" }],
     ["asia-southeast2", "Jakarta", "ID", "Indonesia", "AS", -6.21, 106.85, "a,b,c", 1.37, 16, { host: "asia-southeast2-5tkroniexa-et" }],
-    ["asia-southeast3", "Bangkok", "TH", "Thailand", "AS", 13.75, 100.5, "a,b,c", 1.3, 20, { host: "asia-southeast3-5tkroniexa-eu" }],
+    ["asia-southeast3", "Bangkok", "TH", "Thailand", "AS", 13.75, 100.5, "a,b,c", 1.3, 20, { host: "asia-southeast3-5tkroniexa-eu", rep: false }],
     ["australia-southeast1", "Sydney", "AU", "Australia", "OC", -33.87, 151.21, "a,b,c", 1.42, 27, { host: "australia-southeast1-5tkroniexa-ts" }],
     ["australia-southeast2", "Melbourne", "AU", "Australia", "OC", -37.81, 144.96, "a,b,c", 1.42, 37, { host: "australia-southeast2-5tkroniexa-km" }],
   ],

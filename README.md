@@ -9,8 +9,9 @@ Tell it where your users are and what you need. In about a minute you get:
 - a **disaster-recovery (DR) region**: where a backup copy should live if the primary goes down
 - a **ranked list of every region**, each with a one-line reason
 
-Unlike distance-based pickers, it **measures real latency from your own browser** to every region.
-The numbers reflect your actual network, not a guess from a map.
+Unlike distance-based pickers, it **measures real latency from where your users are**: a probe
+near each location you enter times a connection to every region. If you sit in Delhi but your users
+or company are in Texas, add Texas and the numbers come from Texas, not from your laptop, Wi-Fi or VPN.
 
 ---
 
@@ -18,7 +19,7 @@ The numbers reflect your actual network, not a guess from a map.
 
 | Factor | What it means for you |
 | --- | --- |
-| **Latency** | How fast each region responds to your users, measured live, median of 5 pings |
+| **Latency** | How fast each region responds to your users, measured live from a probe near each user location (or from your own device) |
 | **User locations** | One or several places (e.g. India 70% + UK 30%), weighted by traffic share |
 | **Data residency** | Keep data inside one country, or inside the EU |
 | **Services needed** | 70–85 services per cloud (Kubernetes, databases, GPUs, AI models, …). Regions missing any are excluded |
@@ -38,19 +39,31 @@ Use the **Google Cloud / AWS / Azure** switch in the top bar. Your inputs carry 
 so you can compare clouds.
 
 ### 2. Tell it where your users are
-- **Use my location** if you're where your users are, or
-- **Search a city** (e.g. *Bengaluru*, *Toronto*) and pick it from the list. You can also type
-  coordinates like `12.97, 77.59`.
+- **Search a city** (e.g. *Dallas*, *Bengaluru*, *Toronto*) and pick it from the list. You can also
+  type coordinates like `12.97, 77.59`, or click **Use my location**.
 - Add more cities if your users are spread out, and set a **Traffic %** for each.
-- Tick **I'm here** on the location you're sitting in. That location gets real measured latency;
-  the others are estimated from distance.
+- Enter where your **users** are, not where you are. Working from Delhi for a company in Texas?
+  Add Texas.
 
 ### 3. Run the latency test
-Click **Run latency test**. Your browser pings every region of the selected cloud (about 20–40
-seconds). Results fill in live on the map and in the table.
+Under **Measure from**, choose:
 
-> For accurate numbers, use a normal wired or Wi-Fi connection without a VPN. A VPN makes every
-> region look like it's next to the VPN server. If the app warns about **high jitter**, run the test again.
+- **User locations** (default): for each location, the nearest probe of the free
+  [Globalping](https://globalping.io) network opens a connection to every region of the selected
+  cloud. Takes about 10 seconds per location. Step 2 shows which probe was used and how far it is
+  from your location (e.g. *Austin, Texas → probe in New Braunfels, TX · 72 km away*). Your own
+  network, Wi-Fi or VPN has no effect on these numbers.
+- **This device**: your browser pings every region itself (about 20–40 seconds). Tick
+  **I'm here** on the location you're sitting in; that location gets your device's numbers and the
+  others are estimated from distance. Use a normal connection without a VPN, which makes every
+  region look like it's next to the VPN server.
+
+Click **Run latency test**. Results fill in live on the map and in the table.
+
+> The probe network allows about **250 measurements per hour** from your network, and each region ×
+> location uses one (e.g. 3 locations × 43 Google Cloud regions = 129). If you add more locations
+> than fit, the busiest ones are measured and the rest are estimated from distance. When the limit
+> is used up, the app says when to try again; meanwhile you can measure from this device.
 
 ### 4. Set your requirements
 - **Data must stay in**: choose a country or the EU if regulations require it.
@@ -84,7 +97,7 @@ Use the ☀ / ☾ button in the top bar to switch between light and dark mode.
 - **Export**: copy a ready-made CLI or Terraform snippet with the chosen regions filled in
   (`gcloud`, AWS CLI, Azure CLI, Terraform for each cloud).
 - **Copy share link**: sends your inputs and measured latencies to a teammate. They see the same
-  recommendation and can re-run the test from their own network.
+  recommendation, including which probe measured each location, and can re-run the test.
 
 ---
 
@@ -116,18 +129,26 @@ Use the ☀ / ☾ button in the top bar to switch between light and dark mode.
      card says so.
 
 ### How latency is measured
-Your browser calls a tiny public endpoint inside each region: Google Cloud uses the open-source
-[GCPing](https://gcping.com) probes, AWS uses each region's DynamoDB health check, and Azure uses
-each region's public service endpoint. It sends one warm-up request, then 5 timed requests, and keeps
-the median. Latency for the other user locations, and between primary and DR, is estimated from
-distance and marked **est.**
+- **From user locations:** the nearest online [Globalping](https://globalping.io) probe to each
+  location is picked and reused for every region, so all numbers for a location come from the same
+  machine. It opens an HTTPS connection to a public endpoint inside each region and keeps the
+  connection (TCP handshake) time, which is one network round trip. The endpoints are: Google Cloud's
+  regional Cloud Storage endpoints (GCPing for the one region without one), each AWS region's
+  DynamoDB endpoint, and each Azure region's public service endpoint.
+- **From this device:** your browser calls the same kind of endpoint in each region (GCPing for
+  Google Cloud). It sends one warm-up request, then 5 timed requests, and keeps the median.
+
+Locations that weren't measured, and the latency between primary and DR, are estimated from distance
+and marked **est.**
 
 ---
 
 ## How accurate is it?
 
-- **Latency** is real, but only from the network you test on. Test from where your users are, or
-  ask a colleague there to open your share link and re-run the test.
+- **Latency** is real, measured from a probe near each user location. The probe is usually in the
+  same city or region but can be farther away where probes are scarce; step 2 shows the distance.
+  Probes mostly sit on data-centre and ISP networks, so a user on a mobile or home connection may see
+  a few milliseconds more.
 - **Price index** (cheapest region of that cloud = 1.00) and **carbon** are indicative snapshots,
   not quotes. AWS and Azure don't publish per-region carbon data, so theirs is an estimate of the
   local grid.

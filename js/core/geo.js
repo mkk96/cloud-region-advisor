@@ -13,6 +13,9 @@ export function distanceKm(a, b) {
   return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(h));
 }
 
+/** Stable id for a user location (keys its remote measurements). */
+export const locationKey = (loc) => `${(+loc.lat).toFixed(2)},${(+loc.lon).toFixed(2)}`;
+
 /**
  * Round trip over fibre: ~200 km/ms, cable routes ~1.4x the great-circle
  * distance, plus a few ms of fixed overhead.

@@ -67,6 +67,7 @@ export default defineCloud({
   probe: {
     mode: "no-cors",
     url: (r, x) => `https://${x.host || cog(r.id)}/`,
+    remote: (r, x) => ({ host: x.host || cog(r.id), path: "/", metric: "tcp" }),
     describe: `a public regional endpoint in each region (Azure AI services, or Azure Monitor where AI services aren't offered)`,
   },
   dr: {

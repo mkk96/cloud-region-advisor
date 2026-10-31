@@ -5,6 +5,10 @@ import { state, actions } from "../state/store.js";
 import { searchPlaces, reverseGeocode, parseCoordinates } from "../services/geocode.js";
 
 export function renderLocations() {
+  const device = state.testMode === "device";
+  $("#locationsHint").innerHTML = device
+    ? "Add several locations with a traffic share each. Tick <b>I'm here</b> on the one you are at: this device measures its latency; the others are estimated from distance."
+    : "Add the places your users (or your company's offices) are, with a traffic share each. The latency test measures from a probe near each one, wherever you are.";
   $("#locationList").innerHTML = state.locations
     .map(
       (l, i) => `
@@ -14,7 +18,7 @@ export function renderLocations() {
       <button class="icon-btn" data-remove="${i}" aria-label="Remove ${esc(l.name)}">×</button>
       <div class="meta">
         <label>Traffic <input type="number" min="0" max="100" value="${l.share}" data-share="${i}" aria-label="Traffic share for ${esc(l.name)}" />%</label>
-        <label><input type="checkbox" data-here="${i}" ${l.here ? "checked" : ""}/> I'm here</label>
+        ${device ? `<label><input type="checkbox" data-here="${i}" ${l.here ? "checked" : ""}/> I'm here</label>` : ""}
       </div>
     </li>`
     )

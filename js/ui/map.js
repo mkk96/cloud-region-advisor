@@ -9,6 +9,7 @@ import { $, esc, cssVar } from "./dom.js";
 import { latencyClass, sourceNote } from "./format.js";
 import { isDark } from "./theme.js";
 import { state, currentCloud, cloudState } from "../state/store.js";
+import { locationKey } from "../core/geo.js";
 
 const TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
@@ -106,9 +107,12 @@ export function renderMap(result) {
     markers.set(r.id, { marker, base });
   });
 
+  const remote = cloudState().remote;
   state.locations.forEach((l) => {
+    const r = remote[locationKey(l)];
+    const via = r ? ` · measured via probe in ${esc(r.probe.label)}` : l.here && state.testMode === "device" ? " · you" : "";
     L.circleMarker([l.lat, l.lon], { radius: 7, color: ring, weight: 2.5, fillColor: cssVar("--you"), fillOpacity: 1 })
-      .bindTooltip(`${esc(l.name)} · ${l.share}% traffic${l.here ? " · you" : ""}`, { direction: "top" })
+      .bindTooltip(`${esc(l.name)} · ${l.share}% traffic${via}`, { direction: "top" })
       .addTo(userLayer);
   });
 

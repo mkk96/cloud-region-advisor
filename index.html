@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Cloud Region Advisor</title>
-  <meta name="description" content="Pick a Google Cloud, AWS or Azure primary and disaster-recovery region using latency measured from your own network, service availability and data residency." />
+  <meta name="description" content="Pick a Google Cloud, AWS or Azure primary and disaster-recovery region using latency measured from where your users are, service availability and data residency." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%236366f1'/%3E%3Cstop offset='.5' stop-color='%238b5cf6'/%3E%3Cstop offset='1' stop-color='%2306b6d4'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='9' fill='url(%23g)'/%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%23fff' stroke-width='2.4'/%3E%3Ccircle cx='16' cy='16' r='2.6' fill='%23fff'/%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -35,7 +35,7 @@
       </svg>
       <div>
         <h1>Cloud Region Advisor</h1>
-        <p>Primary + disaster-recovery region, measured from your own network.</p>
+        <p>Primary + disaster-recovery region, measured from where your users are.</p>
       </div>
     </div>
     <div class="top-actions">
@@ -58,15 +58,15 @@
   </div>
 
   <div id="sharedBanner" class="banner" hidden>
-    You are viewing a shared result. Latency numbers were measured from the sender's network —
-    <button class="link" id="sharedRerun">run the test</button> to measure from yours.
+    You are viewing a shared result. Latency numbers are the ones the sender measured —
+    <button class="link" id="sharedRerun">run the test again</button> to re-measure.
   </div>
 
   <section class="hero" aria-labelledby="heroTitle">
     <div class="hero-text">
       <span class="eyebrow"><span class="live-dot" aria-hidden="true"></span> Live latency · Google Cloud · AWS · Azure</span>
       <h2 class="hero-title" id="heroTitle">Find the <span class="grad-text">fastest cloud region</span> for your users</h2>
-      <p class="hero-sub">Measured from your own network in seconds, with a disaster-recovery pick, service checks and data-residency rules built in.</p>
+      <p class="hero-sub">Latency measured from your users' locations in seconds, with a disaster-recovery pick, service checks and data-residency rules built in.</p>
     </div>
     <div class="hero-side">
       <div class="hero-stats" id="heroStats"></div>
@@ -93,14 +93,20 @@
         </form>
         <ul id="searchResults" class="search-results"></ul>
         <ul id="locationList" class="locations"></ul>
-        <p class="hint">Add several locations with a traffic share each. Tick <b>I'm here</b> on the one you are at: its latency is measured live; the others are estimated from distance.</p>
+        <p class="hint" id="locationsHint"></p>
       </section>
 
       <section class="step" id="step2">
         <h2><span class="num">2</span> Run latency test <span class="step-state">Measured</span></h2>
+        <p class="seg-label">Measure from</p>
+        <div class="seg" id="testMode" role="radiogroup" aria-label="Measure latency from">
+          <button type="button" role="radio" data-mode="remote">User locations</button>
+          <button type="button" role="radio" data-mode="device">This device</button>
+        </div>
         <button id="testBtn" class="btn primary wide">Run latency test</button>
         <div class="progress" aria-hidden="true"><div id="progressBar"></div></div>
         <p id="testStatus" class="hint"></p>
+        <ul id="probeList" class="probe-list"></ul>
       </section>
 
       <section class="step" id="step3">

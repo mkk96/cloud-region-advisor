@@ -5,6 +5,7 @@ import { latencyClass } from "./format.js";
 import { paginate, pageList } from "./pagination.js";
 import { highlightRegion, focusRegion } from "./map.js";
 import { state, actions, currentCloud, cloudState } from "../state/store.js";
+import { resultsFor } from "../core/scoring.js";
 
 const SWATCH = { good: "var(--good)", mid: "var(--mid)", bad: "var(--bad)", none: "var(--none)" };
 
@@ -22,8 +23,15 @@ function sortValue(row, key) {
   return 0;
 }
 
-function latencyCell(row, measured, excluded, maxMs) {
-  const m = measured[row.region.id];
+/** Result sets that feed the latency column (per location, or this device). */
+function resultSets() {
+  const ctx = { measured: cloudState().measured, remote: cloudState().remote };
+  return state.locations.length ? state.locations.map((l) => resultsFor(l, ctx)).filter(Boolean) : [ctx.measured];
+}
+
+function latencyCell(row, sets, excluded, maxMs) {
+  const id = row.region.id;
+  const m = sets.map((s) => s[id]).find((x) => x && (!x.ok || x.noisy)) || sets.map((s) => s[id]).find(Boolean);
   if (row.latency) {
     const badge =
       row.latency.source === "estimated" ? `<span class="badge" title="Estimated from distance">est.</span>`
@@ -98,7 +106,7 @@ function renderPager({ page, pages, from, to, total }) {
 
 export function renderRegionTable(result) {
   const cloud = currentCloud();
-  const measured = cloudState().measured;
+  const sets = resultSets();
   const { key, dir } = state.sort;
 
   let rows = [...result.rows];
@@ -139,7 +147,7 @@ export function renderRegionTable(result) {
       return `<tr class="${cls}" data-id="${r.id}">
         <td class="num-col">${rank}</td>
         <td><span class="rid" title="Show ${r.id} on the map">${r.id}</span><span class="sub">${esc(r.city)}, ${esc(r.country)}</span></td>
-        <td class="num-col">${latencyCell(row, measured, excluded, maxMs)}</td>
+        <td class="num-col">${latencyCell(row, sets, excluded, maxMs)}</td>
         <td class="num-col">${r.price.toFixed(2)}</td>
         <td class="num-col">${r.cfe}%</td>
         <td class="num-col">${r.zones.length || "—"}</td>

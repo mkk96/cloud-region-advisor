@@ -12,6 +12,7 @@
  */
 
 import { CLOUDS, DEFAULT_CLOUD } from "../clouds/index.js";
+import { locationKey } from "../core/geo.js";
 
 export const state = {
   cloud: DEFAULT_CLOUD,
@@ -23,8 +24,11 @@ export const state = {
   sort: { key: "rank", dir: 1 },
   showExcluded: true,
   tablePage: 1,
+  // "remote": probes near each user location; "device": this browser
+  testMode: "remote",
   testing: false,
-  // Per cloud: { measured, measuredShared, testSummary, services, primaryOverride, tab }
+  testProgress: { done: 0, total: 0 },
+  // Per cloud: { measured, remote, measuredShared, testSummary, services, primaryOverride, tab }
   perCloud: {},
 };
 
@@ -34,7 +38,8 @@ export const currentCloud = () => CLOUDS[state.cloud];
 export function cloudState(id = state.cloud) {
   if (!state.perCloud[id]) {
     state.perCloud[id] = {
-      measured: {}, // regionId -> latency result
+      measured: {}, // this device: regionId -> latency result
+      remote: {}, // locationKey -> { probe, results: { regionId -> latency result } }
       measuredShared: false,
       testSummary: "",
       services: [],
@@ -94,6 +99,12 @@ export const actions = {
     state.locations[index].share = Math.max(0, Number(share) || 0);
     emit("inputs");
   },
+  setTestMode(mode) {
+    if (state.testing) return;
+    state.testMode = mode;
+    emit("locations"); // "I'm here" only applies to device tests
+  },
+
   /** Only one location can be "I'm here". */
   setHere(index, on) {
     state.locations.forEach((l, i) => (l.here = i === index ? on : false));
@@ -152,14 +163,30 @@ export const actions = {
     emit("view");
   },
 
-  startTest() {
+  /** Clears the previous results of the same kind and starts counting. */
+  startTest(total) {
+    const cs = cloudState();
     state.testing = true;
     state.tablePage = 1;
-    Object.assign(cloudState(), { measured: {}, measuredShared: false, testSummary: "" });
+    state.testProgress = { done: 0, total };
+    if (cs.measuredShared) Object.assign(cs, { measured: {}, remote: {} });
+    if (state.testMode === "device") cs.measured = {};
+    else cs.remote = {};
+    Object.assign(cs, { measuredShared: false, testSummary: "" });
     emit("test");
   },
   recordLatency(regionId, result) {
     cloudState().measured[regionId] = result;
+    state.testProgress.done++;
+    emit("test");
+  },
+  recordRemoteProbe(loc, probe) {
+    cloudState().remote[locationKey(loc)] = { name: loc.name, probe, results: {} };
+    emit("test");
+  },
+  recordRemoteLatency(loc, regionId, result) {
+    cloudState().remote[locationKey(loc)].results[regionId] = result;
+    state.testProgress.done++;
     emit("test");
   },
   finishTest(summary) {
@@ -177,7 +204,8 @@ export const actions = {
     if (snap.downtime) state.downtime = snap.downtime;
     Object.assign(cloudState(), {
       measured: snap.measured,
-      measuredShared: Object.keys(snap.measured).length > 0,
+      remote: snap.remote || {},
+      measuredShared: Object.keys(snap.measured).length > 0 || Object.keys(snap.remote || {}).length > 0,
       services: snap.services,
       primaryOverride: snap.primaryOverride,
     });

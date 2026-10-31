@@ -30,6 +30,7 @@ function renderResults() {
     cloud: currentCloud(),
     locations: state.locations,
     measured: cs.measured,
+    remote: cs.remote,
     residency: state.residency,
     services: cs.services,
     weights: state.weights,

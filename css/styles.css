@@ -308,6 +308,31 @@ button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); 
 .icon-btn { background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 18px; line-height: 1; padding: 2px 6px; border-radius: 6px; }
 .icon-btn:hover { color: var(--bad); background: color-mix(in srgb, var(--bad) 12%, transparent); }
 
+.seg-label { margin: 0 0 6px; font-weight: 600; font-size: 13px; }
+.seg {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 2px; padding: 4px; margin-bottom: 12px;
+  border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border);
+}
+.seg button {
+  border: 0; background: none; color: var(--muted); font: inherit; font-weight: 600; font-size: 13px;
+  padding: 7px 8px; border-radius: 9px; cursor: pointer; transition: color 0.2s, background-color 0.2s, box-shadow 0.2s;
+}
+.seg button:hover { color: var(--text); }
+.seg button.active { background: var(--surface-solid); color: var(--text); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08), 0 0 0 1px var(--border); }
+.seg button:disabled { cursor: default; }
+
+.probe-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; }
+.probe-list:empty { display: none; }
+.probe-list li {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; padding: 8px 10px;
+  border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border);
+}
+.probe-list b { font-weight: 650; }
+.probe-list .via { color: var(--muted); }
+.probe-list .state { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
+.probe-list .state.ok { color: var(--good); }
+.probe-list .state.err { color: var(--bad); }
+
 .progress { height: 6px; background: var(--surface-2); border-radius: 999px; overflow: hidden; margin-top: 12px; }
 #progressBar { height: 100%; width: 0; border-radius: 999px; background: var(--grad); transition: width 0.3s ease; }
 

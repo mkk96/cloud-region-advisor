@@ -3,7 +3,7 @@
 import { test, eq, ok } from "./runner.js";
 import { CLOUDS } from "../js/clouds/index.js";
 import { recommend } from "../js/core/recommend.js";
-import { distanceKm, estimateRtt } from "../js/core/geo.js";
+import { distanceKm, estimateRtt, locationKey } from "../js/core/geo.js";
 import { exclusionReasons, inResidency } from "../js/core/filters.js";
 import { decodeState } from "../js/state/share.js";
 
@@ -133,6 +133,40 @@ test("measured latency beats distance; failed probe makes region unreachable", (
   eq(r.rows.find((x) => x.region.id === "asia-south1").latency, null, "unreachable");
 });
 
+test("remote probe results apply per location; others stay estimated", () => {
+  const gcp = CLOUDS.gcp;
+  const texas = at("Austin, Texas", 30.27, -97.74, { share: 70 });
+  const delhi = at("Delhi", 28.61, 77.21, { share: 30, here: true });
+  const results = Object.fromEntries(gcp.regions.map((reg) => [reg.id, { ok: true, median: 150 }]));
+  results["us-south1"] = { ok: true, median: 12 };
+  results["asia-south2"] = { ok: false, error: "unreachable" };
+  const remote = { [locationKey(texas)]: { probe: { label: "Dallas, TX, US", km: 290 }, results } };
+  const r = run("gcp", { locations: [texas, delhi], remote });
+  const row = (id) => r.rows.find((x) => x.region.id === id);
+  eq(row("us-south1").latency.source, "mixed", "Texas measured, Delhi estimated");
+  eq(row("asia-south2").latency, null, "failed from Texas → unreachable");
+  ok(r.warnings.some((w) => w.includes("Delhi")), "warns Delhi is estimated");
+
+  const only = run("gcp", { locations: [texas], remote });
+  eq(only.primary.region.id, "us-south1");
+  eq(only.primary.latency.source, "measured");
+});
+test("device results apply only to the I'm-here location; remote wins over them", () => {
+  const gcp = CLOUDS.gcp;
+  const here = at("Delhi", 28.61, 77.21, { here: true });
+  const measured = Object.fromEntries(gcp.regions.map((reg) => [reg.id, { ok: true, median: 300 }]));
+  measured["asia-south2"] = { ok: true, median: 7 };
+  eq(run("gcp", { locations: [here], measured }).primary.latency.ms, 7, "device");
+  const remote = { [locationKey(here)]: { probe: { label: "x", km: 1 }, results: { "asia-south2": { ok: true, median: 20 } } } };
+  eq(run("gcp", { locations: [here], measured, remote }).rows.find((x) => x.region.id === "asia-south2").latency.ms, 20, "remote");
+});
+test("every region has a remote probe target", () => {
+  Object.values(CLOUDS).forEach((c) =>
+    c.regions.forEach((r) => ok(r.remoteProbe.host && r.remoteProbe.path && ["tcp", "firstByte"].includes(r.remoteProbe.metric), `${c.id}/${r.id}`))
+  );
+  eq(CLOUDS.gcp.regionById["asia-south2"].remoteProbe.host, "storage.asia-south2.rep.googleapis.com");
+});
+
 // ---------- share links ----------
 test("v1 (GCP-only) share links still decode", () => {
   const v1 = btoa(JSON.stringify({ v: 1, l: [["X", "IN", 12.9, 77.5, 100, 1]], m: { "asia-south1": 30 }, r: "IN", s: ["gke"], w: [7, 2, 1], d: "minutes", p: null }));
@@ -147,6 +181,16 @@ test("unknown services and regions are dropped from share links", () => {
   eq(snap.cloud, "aws");
   eq(Object.keys(snap.measured).join(), "us-east-1");
   eq(snap.services.join(), "ec2");
+});
+test("remote results survive a share link", () => {
+  const loc = ["Austin", "US", 30.27, -97.74, 100, 0];
+  const v2 = btoa(JSON.stringify({ v: 2, c: "aws", l: [loc], m: {}, g: [["Dallas, TX, US", 290, { "us-east-2": 31, "me-south-1": 0, "nope-1": 5 }]], s: [], w: [1, 1, 1], d: "hours" }));
+  const snap = decodeState(v2);
+  const r = snap.remote[locationKey({ lat: 30.27, lon: -97.74 })];
+  eq(r.probe.label, "Dallas, TX, US");
+  eq(r.results["us-east-2"].median, 31);
+  eq(r.results["me-south-1"].ok, false);
+  eq(r.results["nope-1"], undefined, "unknown region dropped");
 });
 test("garbage hash decodes to null", () => {
   eq(decodeState("not-base64!!"), null);
