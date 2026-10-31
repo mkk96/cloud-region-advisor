@@ -1,176 +1,149 @@
 # Cloud Region Advisor
 
-Pick a **primary region** and a **disaster-recovery (DR) region** on **Google Cloud, AWS or Azure**.
-It uses latency measured from your own network, plus data residency, service availability, price and
-carbon. Built from the GCP Region Advisor one-page PRD; AWS and Azure (PRD v2) are included.
+**Live app:** https://mkk96.github.io/cloud-region-advisor/
 
-It is a static site (HTML, CSS and native JavaScript modules; no build step, no backend), so it runs
-locally and hosts for free anywhere that serves static files.
+Cloud Region Advisor helps you decide **where to run your servers** on **Google Cloud, AWS or Azure**.
+Tell it where your users are and what you need. In about a minute you get:
 
-## Run locally
+- a **primary region**: where your app should run
+- a **disaster-recovery (DR) region**: where a backup copy should live if the primary goes down
+- a **ranked list of every region**, each with a one-line reason
 
-The code uses ES modules, which browsers only load over HTTP. Opening `index.html` straight from
-disk shows a notice telling you to use one of these instead:
+Unlike distance-based pickers, it **measures real latency from your own browser** to every region.
+The numbers reflect your actual network, not a guess from a map.
 
-- **With Python (any OS):** `python serve.py` in this folder, then open http://localhost:8000.
-  `python -m http.server` also works, unless your machine serves `.js` as `text/plain`;
-  `serve.py` always sends the right type.
-- **Any other static server** works too (`npx serve`, VS Code Live Server, …).
+---
 
-An internet connection is required (the latency test pings live cloud regions; map tiles and
-Leaflet come from CDNs).
+## What it takes into account
 
-## Tests
-
-With the local server running, open http://localhost:8000/tests/. The page runs the core
-(recommendation, DR, filters, geo, share-link) tests in the browser and shows pass/fail.
-Tests aren't deployed; the Pages workflow only publishes `index.html`, `css/` and `js/`.
-
-## Host for free
-
-| Host | How |
+| Factor | What it means for you |
 | --- | --- |
-| **GitHub Pages** | Push this folder to a GitHub repo → *Settings → Pages → Source: GitHub Actions*. The included workflow `.github/workflows/pages.yml` deploys on every push to `main`. |
-| **Netlify** | Drag and drop the folder at https://app.netlify.com/drop |
-| **Cloudflare Pages** | *Create project → Direct upload* (or connect the repo; build command: none, output directory: `/`) |
-| **Vercel** | `npx vercel` in this folder, or import the repo (framework preset: *Other*, no build) |
+| **Latency** | How fast each region responds to your users, measured live, median of 5 pings |
+| **User locations** | One or several places (e.g. India 70% + UK 30%), weighted by traffic share |
+| **Data residency** | Keep data inside one country, or inside the EU |
+| **Services needed** | 70–85 services per cloud (Kubernetes, databases, GPUs, AI models, …). Regions missing any are excluded |
+| **Priorities** | Sliders to trade off speed vs cost vs carbon |
+| **Acceptable downtime** | Decides how close the DR region must be (synchronous, asynchronous, or backup & restore) |
 
-All asset paths are relative, so it also works from a sub-path such as
-`https://<user>.github.io/<repo>/`.
+Regions covered: **Google Cloud 43 · AWS 34 · Azure 45**.
 
-## Clouds
+---
 
-Pick the cloud with the switch in the header. Locations, residency, priorities and downtime are shared
-across clouds. Each cloud keeps its own latency results, service selection and chosen primary, so you
-can test one, switch, test another and come back.
+## How to use it to find your server location
 
-| | Google Cloud | AWS | Azure |
-| --- | --- | --- | --- |
-| Regions | 43 | 34 | 45 |
-| Services catalogued | 71 | 85 | 73 |
-| Latency probe | [GCPing](https://gcping.com) Cloud Run endpoints (CORS) | `dynamodb.<region>.amazonaws.com/ping` (CORS) | `<region>.api.cognitive.microsoft.com`, or a regional Azure Monitor host where AI services aren't offered (timed with `no-cors`) |
-| Price index baseline | us-central1 = 1.00 | us-east-1 = 1.00 | eastus = 1.00 |
-| Carbon column | Google-published CFE % | local-grid estimate | local-grid estimate |
-| DR pairing | this tool's rules | this tool's rules | Microsoft's **official region pair** when it meets your requirements, else this tool's rules |
-| Export | `gcloud` / Terraform | AWS CLI + eksctl / Terraform | Azure CLI / Terraform (azurerm) |
+Open the [live app](https://mkk96.github.io/cloud-region-advisor/), then:
 
-Every probe host was checked to be served from its own region: TCP handshake times follow geography.
-Azure's hosts don't send CORS headers, so the browser uses an opaque `no-cors` request. It can't read
-the response, but the round-trip time is real.
+### 1. Pick a cloud
+Use the **Google Cloud / AWS / Azure** switch in the top bar. Your inputs carry over when you switch,
+so you can compare clouds.
 
-## What it does (PRD mapping)
+### 2. Tell it where your users are
+- **Use my location** if you're where your users are, or
+- **Search a city** (e.g. *Bengaluru*, *Toronto*) and pick it from the list. You can also type
+  coordinates like `12.97, 77.59`.
+- Add more cities if your users are spread out, and set a **Traffic %** for each.
+- Tick **I'm here** on the location you're sitting in. That location gets real measured latency;
+  the others are estimated from distance.
 
-| PRD feature | Where |
-| --- | --- |
-| Location input (browser location, city search, several locations with traffic share) | Step 1 |
-| Live latency test (median of 5 pings after a warm-up, jitter warning) | Step 2, `js/core/latency.js` |
-| Latency map (green / amber / red) | Leaflet map |
-| Primary pick with plain-English reason | Primary card, `js/core/recommend.js` |
-| DR pick (distance, primary↔DR latency, rules shown) | DR card |
-| Ranked, sortable region table (latency, price, CFE, zones, services) with a reason per row | All regions |
-| Service availability: 70–85 products per cloud in 9 categories, searchable | Step 3 + *Services* column (hover shows what's missing) |
-| Data residency filter (any country with a region, or the EU) | Step 3 |
-| Relative price, carbon score (v1.1) | Table + scoring |
-| Export CLI / Terraform snippet (v1.1) | Export card |
-| Shareable result link (v1.1) | *Copy share link*. Cloud, inputs and measured latencies are in the URL hash. Older GCP-only links still open. |
-| Multi-cloud (v2) | Cloud switch in the header |
+### 3. Run the latency test
+Click **Run latency test**. Your browser pings every region of the selected cloud (about 20–40
+seconds). Results fill in live on the map and in the table.
+
+> For accurate numbers, use a normal wired or Wi-Fi connection without a VPN. A VPN makes every
+> region look like it's next to the VPN server. If the app warns about **high jitter**, run the test again.
+
+### 4. Set your requirements
+- **Data must stay in**: choose a country or the EU if regulations require it.
+- **Services needed**: search and tick what your app uses (e.g. *GKE*, *Cloud SQL*, *Bedrock*,
+  *Azure OpenAI*, *GPUs*).
+- **Priorities**: move the sliders. *Speed* favours low latency, *Cost* favours cheaper regions,
+  *Carbon* favours cleaner energy.
+- **Acceptable downtime**:
+  - *Near zero*: DR must be close enough for synchronous replication (≤ 25 ms)
+  - *Minutes*: asynchronous replication (≤ 120 ms), the usual choice
+  - *Hours*: backup & restore, any distance
+
+The recommendation updates instantly as you change anything.
+
+### 5. Read the result
+- **Primary region card**: the region to deploy to, its latency, relative price, carbon, number of
+  availability zones, and a plain-English reason (e.g. *"Lowest latency from your location (16 ms),
+  data stays in India"*).
+- **Disaster-recovery card**: the backup region, how far it is from the primary, the estimated
+  primary ↔ DR latency, and the rules it passed.
+- **Latency map**: every region coloured 🟢 < 80 ms · 🟠 80–160 ms · 🔴 > 160 ms. Grey means
+  excluded or not measured.
+- **All regions table**: sort by latency, price, carbon, zones or services. Hover the *Services*
+  count to see what a region lacks. Click **Set primary** to override the pick and see the matching DR.
+
+### 6. Use or share the result
+- **Export**: copy a ready-made CLI or Terraform snippet with the chosen regions filled in
+  (`gcloud`, AWS CLI, Azure CLI, Terraform for each cloud).
+- **Copy share link**: sends your inputs and measured latencies to a teammate. They see the same
+  recommendation and can re-run the test from their own network.
+
+---
+
+## Examples
+
+| Situation | Settings | Typical result |
+| --- | --- | --- |
+| Indian users, data must stay in India | Bengaluru · India residency | GCP: Mumbai or Delhi (whichever is faster for you), the other as DR · AWS: Mumbai and Hyderabad · Azure: Central India and South India (official pair) |
+| European SaaS under GDPR | Paris · European Union · Bedrock | AWS: Paris primary, DR elsewhere in the EU (e.g. Stockholm) |
+| Global startup watching cost | Several cities with traffic % · Cost slider high | Cheapest region that is still reasonably fast for the weighted users |
+| Needs GPUs or a specific AI model | Tick *GPUs* / *Vertex AI* / *Azure OpenAI* | Only regions offering it are ranked; the rest show why they're excluded |
+| Low-downtime database | *Near zero* downtime | DR must be ≤ 25 ms from primary; the app warns if no region qualifies |
+
+---
+
+## How it decides
+
+1. **Filter**: drop regions outside your data-residency choice or missing a required service.
+2. **Score** the rest on latency, price and carbon, weighted by your sliders. Latency is compared on
+   a log scale, so 5 vs 15 ms matters more than 205 vs 215 ms. With several user locations, latency
+   is the traffic-weighted average.
+3. **Primary**: the best score.
+4. **DR region** must also pass the filters, be at least 100 km away (a different metro area, so one
+   local disaster can't hit both), and be within the latency limit for your downtime choice. It then
+   prefers the same country, then the same continent, then the lower price.
+   - **Azure:** Microsoft publishes official region pairs, and the app uses the pair whenever it meets
+     your requirements.
+   - **Google Cloud and AWS** publish no official pairs. These rules are this tool's own, and the DR
+     card says so.
 
 ### How latency is measured
+Your browser calls a tiny public endpoint inside each region: Google Cloud uses the open-source
+[GCPing](https://gcping.com) probes, AWS uses each region's DynamoDB health check, and Azure uses
+each region's public service endpoint. It sends one warm-up request, then 5 timed requests, and keeps
+the median. Latency for the other user locations, and between primary and DR, is estimated from
+distance and marked **est.**
 
-Each region gets one warm-up request (DNS + TLS, allowed up to 12 s), then 5 timed requests; the
-median is kept. Regions are probed 4 at a time.
+---
 
-Only the location marked **I'm here** gets measured latency. Other user locations, and
-primary↔DR latency, are estimated from great-circle distance (`4 ms + distance × 1.4 route
-factor ÷ 200 km/ms × 2`) and labelled `est.`
+## How accurate is it?
 
-### Recommendation logic
+- **Latency** is real, but only from the network you test on. Test from where your users are, or
+  ask a colleague there to open your share link and re-run the test.
+- **Price index** (cheapest region of that cloud = 1.00) and **carbon** are indicative snapshots,
+  not quotes. AWS and Azure don't publish per-region carbon data, so theirs is an estimate of the
+  local grid.
+- **Service availability** is a curated snapshot. Confirm critical services on the provider's
+  "products by region" page; the links are in the app's footer.
+- A region whose probe endpoint is down shows as **unreachable**.
+- This is not an official Google, Amazon or Microsoft tool.
 
-1. **Filter** out regions that fail data residency or lack a required service.
-2. **Score** the rest (lower is better):
-   `score = w_lat·latency + w_cost·price + w_carbon·(1 − CFE)`. Each factor is min-max
-   normalised to 0–1, and latency is compared on a log scale so 5 vs 15 ms counts more than
-   205 vs 215 ms. Weights come from the priority sliders. With several locations, latency is
-   the traffic-weighted average.
-3. **DR region:**
-   - must pass the same filters, be ≥ 100 km away (a different metro area), and differ from the primary
-   - **Azure:** the official pair is used when it passes those rules. If the pair is restricted-access
-     (e.g. France South) or fails a requirement, the card says so and the rules below apply.
-   - prefers the same country, then the same continent, then elsewhere
-   - must be within the primary↔DR latency limit for the chosen downtime: synchronous ≤ 25 ms, asynchronous ≤ 120 ms, backup & restore unlimited
-   - ties are broken on lower price, then on lower latency.
+---
 
-### Reference data
-
-Each cloud lives in its own file under `js/clouds/` (regions, coordinates, zones, price index,
-carbon %, services, probe hosts, export snippets). **Price, carbon and service availability are
-indicative snapshots** dated by `DATA_AS_OF` in `js/core/config.js`. Refresh them from the links in
-each cloud's `sources` list, which the page footer also shows.
-
-- **Add a region:** append a row to that cloud's `regions` list.
-- **Add a service:** append an entry to `services` with a `where` rule (`"all"`, `"global"`, a list
-  of region ids, `{ except: [...] }`, or a function).
-- **Add a cloud:** create `js/clouds/<id>.js` exporting `defineCloud({...})` and add it to
-  `CLOUD_LIST` in `js/clouds/index.js`.
-
-## Project layout
+## Project structure
 
 ```
-index.html                  page shell; loads js/main.js as a module
-css/styles.css              styles (light + dark)
-serve.py                    local server (correct JS MIME type)
-tests/                      in-browser tests for the core modules
-
-js/main.js                  entry: restore share link, init views, batched re-render on state change
-
-js/core/                    pure logic — no DOM, no globals; every function takes the cloud explicitly
-  config.js                 shared constants (continents, EU, downtime options, bands)
-  geo.js                    great-circle distance, distance → RTT estimate
-  registry.js               defineCloud(): indexes a cloud definition (regions, services, residency)
-  latency.js                browser latency test (warm-up + median of 5)
-  filters.js                residency + required-service filters
-  scoring.js                per-region latency and weighted score
-  dr.js                     DR selection (official pairs, tiers, latency limit, price)
-  explain.js                plain-English reasons
-  recommend.js              pipeline: filter → score → primary → DR → explain
-
-js/clouds/                  one data module per cloud
-  index.js                  CLOUD_LIST / CLOUDS — register clouds here
-  gcp.js  aws.js  azure.js  regions, services, probes, pairs, export snippets
-
-js/state/
-  store.js                  app state + named actions; emits topics for re-rendering
-  share.js                  share-link encode / decode (#s=…)
-
-js/services/
-  geocode.js                OpenStreetMap Nominatim search / reverse geocoding
-
-js/ui/                      one module per panel: init() binds events → actions, render() draws
-  dom.js  format.js         DOM + formatting helpers
-  cloud-switch.js           header cloud switch
-  locations.js              step 1
-  latency-test.js           step 2 (+ shared-result banner)
-  requirements.js           step 3: residency, priorities, downtime
-  service-picker.js         step 3: services
-  cards.js  warnings.js     primary / DR cards, warning strip
-  map.js                    Leaflet map
-  region-table.js           all-regions table
-  export.js                 CLI / Terraform snippet + share button
-  footnote.js               sources footer
-
-.github/workflows/pages.yml GitHub Pages deploy
+index.html            the page
+css/                  styles (light and dark)
+js/core/              recommendation logic: filters, scoring, DR choice, latency test
+js/clouds/            region and service data, one file per cloud (gcp, aws, azure)
+js/state/             app state and share links
+js/ui/                one file per panel (map, table, cards, …)
+tests/                tests for the recommendation logic
 ```
 
-Data flows one way: **UI event → `actions.*` in the store → topic emitted → `main.js` re-renders**
-(cloud-specific controls only when the cloud changes; results every time).
-
-## Known limits
-
-- The latency test relies on public endpoints this project doesn't own (GCPing, DynamoDB, Azure AI
-  services / Monitor). If one is down, that region shows *unreachable*. In testing, AWS me-south-1
-  (Bahrain) did not respond.
-- AWS and Azure don't publish per-region carbon-free energy, so their carbon column is an estimate
-  of the local grid.
-- Incident history (v1.1) is a link to each cloud's status page. The status feeds don't allow
-  cross-origin browser reads, so live incidents would need a small backend.
-- No side-by-side comparison of clouds yet. Switch clouds to compare.
+To correct a region, price or service, edit the matching file in `js/clouds/`.
