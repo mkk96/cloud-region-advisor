@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cloud Region Advisor</title>
+  <meta name="description" content="Pick a Google Cloud, AWS or Azure primary and disaster-recovery region using latency measured from your own network, service availability and data residency." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%231a73e8'/%3E%3Cpath d='M16 6a10 10 0 0 0-10 10h4a6 6 0 0 1 6-6z' fill='%23fff'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23fff'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="16" r="14" fill="var(--accent)" />
+        <path d="M16 6a10 10 0 0 0-10 10h4a6 6 0 0 1 6-6z" fill="#fff" />
+        <circle cx="16" cy="16" r="3" fill="#fff" />
+      </svg>
+      <div>
+        <h1>Cloud Region Advisor</h1>
+        <p>Primary + disaster-recovery region, using latency measured from your own network.</p>
+      </div>
+    </div>
+    <div class="cloud-switch" role="radiogroup" aria-label="Cloud provider" id="cloudSwitch"></div>
+    <button id="shareBtn" class="btn">Copy share link</button>
+  </header>
+
+  <div id="fileNotice" class="banner warn" hidden>
+    This page was opened straight from disk, which browsers block for JavaScript modules.
+    Run <code>python serve.py</code> in the project folder and open
+    <a href="http://localhost:8000">http://localhost:8000</a> instead.
+  </div>
+
+  <div id="sharedBanner" class="banner" hidden>
+    You are viewing a shared result. Latency numbers were measured from the sender's network —
+    <button class="link" id="sharedRerun">run the test</button> to measure from yours.
+  </div>
+
+  <main class="layout">
+    <aside class="inputs">
+      <section class="step">
+        <h2><span class="num">1</span> Where are your users?</h2>
+        <div class="row">
+          <button id="geoBtn" class="btn">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>
+            Use my location
+          </button>
+        </div>
+        <form id="searchForm" class="row search">
+          <input id="cityInput" type="search" placeholder="Add a city, e.g. Bengaluru" autocomplete="off" aria-label="City" />
+          <button class="btn" type="submit">Search</button>
+        </form>
+        <ul id="searchResults" class="search-results"></ul>
+        <ul id="locationList" class="locations"></ul>
+        <p class="hint">Add several locations with a traffic share each. Tick <b>I'm here</b> on the one you are at: its latency is measured live; the others are estimated from distance.</p>
+      </section>
+
+      <section class="step">
+        <h2><span class="num">2</span> Run latency test</h2>
+        <button id="testBtn" class="btn primary wide">Run latency test</button>
+        <div class="progress" aria-hidden="true"><div id="progressBar"></div></div>
+        <p id="testStatus" class="hint"></p>
+      </section>
+
+      <section class="step">
+        <h2><span class="num">3</span> Requirements</h2>
+        <label class="field">
+          <span>Data must stay in</span>
+          <select id="residency"></select>
+        </label>
+
+        <fieldset class="field">
+          <legend>Services needed <span id="svcCount" class="count"></span></legend>
+          <input id="svcFilter" type="search" placeholder="Search services…" autocomplete="off" aria-label="Search services" />
+          <div id="svcSelected" class="chips selected"></div>
+          <div id="services" class="svc-groups"></div>
+        </fieldset>
+
+        <fieldset class="field">
+          <legend>Priorities</legend>
+          <div class="slider"><label for="wLat">Speed</label><input id="wLat" type="range" min="0" max="10" /><output id="wLatOut"></output></div>
+          <div class="slider"><label for="wCost">Cost</label><input id="wCost" type="range" min="0" max="10" /><output id="wCostOut"></output></div>
+          <div class="slider"><label for="wCarbon">Carbon</label><input id="wCarbon" type="range" min="0" max="10" /><output id="wCarbonOut"></output></div>
+        </fieldset>
+
+        <label class="field">
+          <span>Acceptable downtime</span>
+          <select id="downtime"></select>
+        </label>
+      </section>
+    </aside>
+
+    <section class="results">
+      <div id="message" class="message" hidden></div>
+
+      <div class="cards">
+        <article class="card rec" id="primaryCard"></article>
+        <article class="card rec" id="drCard"></article>
+      </div>
+
+      <div id="warnings"></div>
+
+      <article class="card">
+        <header class="card-head">
+          <h2>Latency map</h2>
+          <div class="legend">
+            <span><i class="dot good"></i>&lt; 80 ms</span>
+            <span><i class="dot mid"></i>80–160 ms</span>
+            <span><i class="dot bad"></i>&gt; 160 ms</span>
+            <span><i class="dot none"></i>not measured / excluded</span>
+            <span><i class="dot you"></i>your users</span>
+          </div>
+        </header>
+        <div id="map" role="img" aria-label="World map of cloud regions coloured by latency"></div>
+      </article>
+
+      <article class="card">
+        <header class="card-head">
+          <h2>All regions</h2>
+          <label class="toggle"><input type="checkbox" id="showExcluded" checked /> Show excluded</label>
+        </header>
+        <div class="table-wrap">
+          <table id="regionTable">
+            <thead>
+              <tr>
+                <th data-sort="rank" class="num-col">#</th>
+                <th data-sort="id">Region</th>
+                <th data-sort="latency" class="num-col">Latency</th>
+                <th data-sort="price" class="num-col">Price idx</th>
+                <th data-sort="cfe" class="num-col">CFE</th>
+                <th data-sort="zones" class="num-col">Zones</th>
+                <th data-sort="services" class="num-col">Services</th>
+                <th>Why</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="card">
+        <header class="card-head">
+          <h2>Export</h2>
+          <div class="tabs" role="tablist" id="exportTabs"></div>
+        </header>
+        <div class="code-wrap">
+          <pre id="snippet"></pre>
+          <button id="copySnippet" class="btn small copy">Copy</button>
+        </div>
+      </article>
+
+      <footer class="footnote" id="footnote"></footer>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    // ES modules can't load from file:// — say so instead of showing a dead page.
+    if (location.protocol === "file:") {
+      document.getElementById("fileNotice").hidden = false;
+    }
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
