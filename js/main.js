@@ -18,6 +18,8 @@ import { initMap, renderMap } from "./ui/map.js";
 import { initRegionTable, renderRegionTable } from "./ui/region-table.js";
 import { initExport, renderExportTabs, renderSnippet } from "./ui/export.js";
 import { renderFootnote } from "./ui/footnote.js";
+import { renderVisitStats } from "./ui/visit-stats.js";
+import { logVisit, fetchStats } from "./services/analytics.js";
 
 function renderResults() {
   const cs = cloudState();
@@ -88,3 +90,8 @@ initMap();
 
 subscribe(schedule);
 render(new Set(["boot"]));
+
+// Count this visit, then show totals that include it. Never blocks the app.
+logVisit()
+  .then(() => fetchStats())
+  .then(renderVisitStats);

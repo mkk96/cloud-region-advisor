@@ -1,29 +1,11 @@
-/**
- * Browser tests for the pure core modules. Results render into the page and
- * are also set on document.body.dataset.result ("pass" / "fail") for headless runs.
- */
+/** Tests for the pure core modules (recommendation, DR, filters, geo, share links). */
 
+import { test, eq, ok } from "./runner.js";
 import { CLOUDS } from "../js/clouds/index.js";
 import { recommend } from "../js/core/recommend.js";
 import { distanceKm, estimateRtt } from "../js/core/geo.js";
 import { exclusionReasons, inResidency } from "../js/core/filters.js";
 import { decodeState } from "../js/state/share.js";
-
-const results = [];
-function test(name, fn) {
-  try {
-    fn();
-    results.push({ name, ok: true });
-  } catch (e) {
-    results.push({ name, ok: false, error: e.message });
-  }
-}
-function eq(actual, expected, label = "") {
-  if (actual !== expected) throw new Error(`${label} expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
-}
-function ok(value, label) {
-  if (!value) throw new Error(`${label} expected truthy`);
-}
 
 const at = (name, lat, lon, extra = {}) => ({ name, lat, lon, share: 100, here: false, ...extra });
 const BENGALURU = at("Bengaluru", 12.97, 77.59);
@@ -169,12 +151,3 @@ test("unknown services and regions are dropped from share links", () => {
 test("garbage hash decodes to null", () => {
   eq(decodeState("not-base64!!"), null);
 });
-
-// ---------- report ----------
-const failed = results.filter((r) => !r.ok);
-document.getElementById("summary").textContent = `${results.length - failed.length} / ${results.length} passed`;
-document.getElementById("summary").className = failed.length ? "fail" : "pass";
-document.getElementById("results").innerHTML = results
-  .map((r) => `<div class="${r.ok ? "pass" : "fail"}">${r.ok ? "✓" : "✗"} ${r.name}</div>${r.ok ? "" : `<pre>${r.error}</pre>`}`)
-  .join("");
-document.body.dataset.result = failed.length ? "fail" : "pass";

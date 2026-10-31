@@ -134,6 +134,25 @@ distance and marked **est.**
 
 ---
 
+## Visitor statistics
+
+The bottom of the page shows **unique visitors and visits** for today, the last 7 days, the last
+30 days and all time.
+
+- **What is collected:** only a random anonymous ID created in the visitor's browser, plus the time
+  of the visit. No IP address, name, location, cookies or test results. Repeat visits by the same
+  browser within 30 minutes count once.
+- **Where it's stored:** a free [Supabase](https://supabase.com) Postgres database owned by the site
+  owner. The website can only add a visit and read the totals; it can't read individual records.
+- **Where to see it:** on the website footer, or in the Supabase dashboard (*Table Editor →
+  visits*). Ready-made daily, weekly and monthly queries are at the bottom of
+  [`supabase/setup.sql`](supabase/setup.sql).
+- **Setup:** run `supabase/setup.sql` in the Supabase SQL Editor, then put the project URL and
+  publishable key in [`js/analytics.config.js`](js/analytics.config.js). While those are empty,
+  nothing is sent and the stats are hidden.
+
+---
+
 ## Project structure
 
 ```
@@ -142,8 +161,11 @@ css/                  styles (light and dark)
 js/core/              recommendation logic: filters, scoring, DR choice, latency test
 js/clouds/            region and service data, one file per cloud (gcp, aws, azure)
 js/state/             app state and share links
-js/ui/                one file per panel (map, table, cards, …)
-tests/                tests for the recommendation logic
+js/ui/                one file per panel (map, table, cards, visitor stats, …)
+js/services/          city search and anonymous visit counting
+js/analytics.config.js  Supabase URL + publishable key for visitor stats
+supabase/setup.sql    database setup for visitor stats
+tests/                tests for the recommendation logic and visit counter
 ```
 
 To correct a region, price or service, edit the matching file in `js/clouds/`.
