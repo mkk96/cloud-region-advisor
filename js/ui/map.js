@@ -17,6 +17,7 @@ const COUNTRIES = "data/world-india-view.json";
 const ATTRIBUTION = 'Boundaries: <a href="https://www.naturalearthdata.com/" target="_blank" rel="noopener">Natural Earth</a> (India view)';
 
 let map, countryLayer, regionLayer, userLayer;
+let countryTheme = null; // theme the country shapes were last coloured for
 let markers = new Map(); // regionId -> { marker, base }
 let viewKey = "";
 
@@ -57,6 +58,7 @@ async function loadCountries(L) {
       pane: "countries",
       renderer: L.canvas({ pane: "countries", padding: 0.5 }),
     }).addTo(map);
+    countryTheme = isDark();
   } catch (e) {
     /* markers still work on a plain background */
   }
@@ -91,7 +93,11 @@ export function renderMap(result) {
   const L = window.L;
   const cloud = currentCloud();
   const shared = cloudState().measuredShared;
-  if (countryLayer) countryLayer.setStyle(countryStyle()); // follows the theme
+  // Recolour the country shapes only when the theme changes (it redraws them all).
+  if (countryLayer && countryTheme !== isDark()) {
+    countryTheme = isDark();
+    countryLayer.setStyle(countryStyle());
+  }
   regionLayer.clearLayers();
   userLayer.clearLayers();
   markers = new Map();

@@ -54,7 +54,8 @@ function render(topics) {
     renderFootnote();
     document.title = `Cloud Region Advisor — ${currentCloud().name}`;
   }
-  if (cloudChanged || topics.has("test")) {
+  // Step 2 depends on the test, the measure-from mode and the location list.
+  if (cloudChanged || topics.has("test") || topics.has("locations")) {
     renderCloudSwitch();
     renderLatencyTest();
     renderHeroCta(state.testing);
@@ -71,18 +72,26 @@ let scheduled = false;
 // While a latency test streams results, redraw ~2×/s instead of every frame
 // so rendering doesn't compete with the measurements.
 const TEST_RENDER_INTERVAL_MS = 500;
+// Browsers can hold back animation frames (background tab, some headless
+// modes); a timer makes sure a scheduled render still happens.
+const FRAME_FALLBACK_MS = 150;
+function run() {
+  if (!scheduled) return; // already drawn by the other trigger
+  scheduled = false;
+  const topics = new Set(pending);
+  pending.clear();
+  render(topics);
+}
+function kick() {
+  requestAnimationFrame(run);
+  setTimeout(run, FRAME_FALLBACK_MS);
+}
 function schedule(topic) {
   pending.add(topic);
   if (scheduled) return;
   scheduled = true;
-  const run = () => {
-    scheduled = false;
-    const topics = new Set(pending);
-    pending.clear();
-    render(topics);
-  };
-  if (state.testing && topic === "test") setTimeout(() => requestAnimationFrame(run), TEST_RENDER_INTERVAL_MS);
-  else requestAnimationFrame(run);
+  if (state.testing && topic === "test") setTimeout(kick, TEST_RENDER_INTERVAL_MS);
+  else kick();
 }
 
 // ---------- boot ----------

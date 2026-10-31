@@ -102,7 +102,9 @@ export const actions = {
   setTestMode(mode) {
     if (state.testing) return;
     state.testMode = mode;
-    emit("locations"); // "I'm here" only applies to device tests
+    // A device test only counts for the location marked "I'm here".
+    if (mode === "device" && state.locations.length && !state.locations.some((l) => l.here)) state.locations[0].here = true;
+    emit("locations"); // also shows / hides the "I'm here" boxes
   },
 
   /** Only one location can be "I'm here". */
