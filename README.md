@@ -85,7 +85,9 @@ The recommendation updates instantly as you change anything.
 - **Disaster-recovery card**: the backup region, how far it is from the primary, the estimated
   primary ↔ DR latency, and the rules it passed.
 - **Latency map**: every region coloured 🟢 < 80 ms · 🟠 80–160 ms · 🔴 > 160 ms. Grey means
-  excluded or not measured.
+  excluded or not measured. Country boundaries follow India's official map (all of Jammu & Kashmir
+  and Ladakh, including Aksai Chin, and Arunachal Pradesh are shown within India), using Natural
+  Earth's India-view data.
 - **All regions table**: shows 10 regions per page; use the page buttons below it to see the rest.
   Sort by latency, price, carbon, zones or services. Hover a row to highlight that region on the
   map, or click its name to fly the map to it. Hover the *Services* count to see what a region
@@ -189,6 +191,7 @@ js/state/             app state and share links
 js/ui/                one file per panel (map, table, cards, visitor stats, …)
 js/services/          city search and anonymous visit counting
 js/analytics.config.js  Supabase URL + publishable key for visitor stats
+data/                 world map boundaries (Natural Earth, India view)
 supabase/setup.sql    database setup for visitor stats
 tests/                tests for the recommendation logic and visit counter
 ```

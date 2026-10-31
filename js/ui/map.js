@@ -1,8 +1,10 @@
 /**
  * Leaflet latency map (Leaflet is loaded as a global `L` from the CDN).
- * OpenStreetMap tiles (no API key); the light / dark look is a CSS filter
- * on the tile pane. Exposes highlightRegion / focusRegion so the table can
- * drive the map.
+ * The base map is drawn from data/world-india-view.json: Natural Earth
+ * country boundaries as officially depicted by India (all of Jammu & Kashmir
+ * and Ladakh, including Aksai Chin, and Arunachal Pradesh within India),
+ * coloured from the theme. Exposes highlightRegion / focusRegion so the table
+ * can drive the map.
  */
 
 import { $, esc, cssVar } from "./dom.js";
@@ -11,10 +13,10 @@ import { isDark } from "./theme.js";
 import { state, currentCloud, cloudState } from "../state/store.js";
 import { locationKey } from "../core/geo.js";
 
-const TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
-const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+const COUNTRIES = "data/world-india-view.json";
+const ATTRIBUTION = 'Boundaries: <a href="https://www.naturalearthdata.com/" target="_blank" rel="noopener">Natural Earth</a> (India view)';
 
-let map, regionLayer, userLayer;
+let map, countryLayer, regionLayer, userLayer;
 let markers = new Map(); // regionId -> { marker, base }
 let viewKey = "";
 
@@ -24,11 +26,40 @@ export function initMap() {
     $("#map").innerHTML = `<p class="hint" style="padding:16px">Map library failed to load (offline?). Everything else still works.</p>`;
     return;
   }
-  map = L.map("map", { worldCopyJump: true, minZoom: 1 }).setView([25, 10], 2);
-  L.tileLayer(TILES, { maxZoom: 9, attribution: ATTRIBUTION }).addTo(map);
+  map = L.map("map", {
+    minZoom: 1,
+    maxZoom: 7,
+    maxBounds: [[-85, -200], [85, 200]],
+    maxBoundsViscosity: 1,
+  }).setView([25, 10], 2);
+  map.attributionControl.addAttribution(ATTRIBUTION);
+  map.createPane("countries").style.zIndex = 200; // under the markers, like a tile layer
+  loadCountries(L);
   regionLayer = L.layerGroup().addTo(map);
   userLayer = L.layerGroup().addTo(map);
   window.addEventListener("resize", () => map.invalidateSize());
+}
+
+const countryStyle = () => ({
+  color: cssVar("--map-border"),
+  weight: 0.8,
+  fillColor: cssVar("--map-land"),
+  fillOpacity: 1,
+});
+
+async function loadCountries(L) {
+  try {
+    const res = await fetch(COUNTRIES);
+    if (!res.ok) throw new Error(res.status);
+    countryLayer = L.geoJSON(await res.json(), {
+      style: countryStyle,
+      interactive: false,
+      pane: "countries",
+      renderer: L.canvas({ pane: "countries", padding: 0.5 }),
+    }).addTo(map);
+  } catch (e) {
+    /* markers still work on a plain background */
+  }
 }
 
 function popupHtml(row, cloud, shared) {
@@ -60,6 +91,7 @@ export function renderMap(result) {
   const L = window.L;
   const cloud = currentCloud();
   const shared = cloudState().measuredShared;
+  if (countryLayer) countryLayer.setStyle(countryStyle()); // follows the theme
   regionLayer.clearLayers();
   userLayer.clearLayers();
   markers = new Map();

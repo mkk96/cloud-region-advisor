@@ -24,6 +24,9 @@
   --none: #94a3b8;
   --you: #a855f7;
   --dr: #14b8a6;
+  --map-sea: #e6edf7;
+  --map-land: #fbfcfe;
+  --map-border: #b9c4d6;
   --warn-bg: #fffbeb;
   --warn-border: #fcd34d;
   --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
@@ -57,6 +60,9 @@
     --none: #64748b;
     --you: #c084fc;
     --dr: #2dd4bf;
+    --map-sea: #08101e;
+    --map-land: #172133;
+    --map-border: #3a4a66;
     --warn-bg: rgba(251, 191, 36, 0.08);
     --warn-border: rgba(251, 191, 36, 0.35);
     --shadow-sm: none;
@@ -85,6 +91,9 @@
   --none: #64748b;
   --you: #c084fc;
   --dr: #2dd4bf;
+  --map-sea: #08101e;
+  --map-land: #172133;
+  --map-border: #3a4a66;
   --warn-bg: rgba(251, 191, 36, 0.08);
   --warn-border: rgba(251, 191, 36, 0.35);
   --shadow-sm: none;
@@ -445,14 +454,8 @@ input[type="range"]:focus-visible { box-shadow: 0 0 0 4px var(--accent-soft); }
 .dot.mid { background: var(--mid); box-shadow: 0 0 8px var(--mid); }
 .dot.bad { background: var(--bad); box-shadow: 0 0 8px var(--bad); }
 .dot.none { background: var(--none); } .dot.you { background: var(--you); box-shadow: 0 0 8px var(--you); }
-#map { height: 440px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-2); overflow: hidden; }
-.leaflet-container { font: inherit; background: var(--surface-2); }
-/* Restyle the OpenStreetMap tiles: muted in light mode, inverted in dark mode. */
-.leaflet-tile-pane { filter: saturate(0.45) contrast(0.92) brightness(1.04); transition: filter 0.3s; }
-:root[data-theme="dark"] .leaflet-tile-pane { filter: invert(1) hue-rotate(195deg) saturate(0.5) brightness(0.82) contrast(0.92); }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .leaflet-tile-pane { filter: invert(1) hue-rotate(195deg) saturate(0.5) brightness(0.82) contrast(0.92); }
-}
+#map { height: 440px; border-radius: 12px; border: 1px solid var(--border); background: var(--map-sea); overflow: hidden; }
+.leaflet-container { font: inherit; background: var(--map-sea); }
 .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow-lg); }
 .leaflet-popup-content-wrapper { border-radius: 12px; border: 1px solid var(--border); }
 .leaflet-tooltip { background: var(--surface-solid); color: var(--text); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow); font-weight: 500; }
